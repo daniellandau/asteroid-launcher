@@ -30,13 +30,22 @@
  */
 
 import QtQuick 2.0
+import QtFeedback 5.0
 import org.asteroid.controls 1.0
 import org.nemomobile.lipstick 0.1
 
 Item {
     id: notificationWindow
+    property var vibrateTimes : 0
     width: initialSize.width
     height: initialSize.height
+    x: Desktop.instance.x
+    y: Desktop.instance.y
+
+    ThemeEffect {
+      id: haptics
+      effect: "PressStrong"
+    }
 
     MouseArea {
         id: notificationArea
@@ -122,6 +131,16 @@ Item {
                 StateChangeScript {
                     name: "notificationShown"
                     script: {
+                        const doVibrate = notificationPreviewPresenter.notification != null
+                              ?  notificationPreviewPresenter.notification.hints
+                                && notificationPreviewPresenter.notification.hints.vibrate === "strong"
+                              : false
+                        if (doVibrate) {
+                            notificationWindow.vibrateTimes = 2;
+                            haptics.play()
+                        } else {
+                            notificationWindow.vibrateTimes = 0;
+                        }
                         notificationTimer.start()
                     }
                 }
@@ -162,8 +181,16 @@ Item {
         Timer {
             id: notificationTimer
             interval: 3000
-            repeat: false
-            onTriggered: notificationArea.state = "hide"
+            repeat: true
+            onTriggered: {
+                if (notificationWindow.vibrateTimes > 0) {
+                    haptics.play()
+                    notificationWindow.vibrateTimes -= 1
+                } else {
+                    notificationArea.state = "hide"
+                    stop()
+                }
+            }
         }
 
         Connections {
